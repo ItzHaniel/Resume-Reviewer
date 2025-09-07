@@ -1,6 +1,7 @@
 import io
 import fitz  # PyMuPDF
 from typing import List, Union
+import re
 
 def highlight_resume_pdf(pdf_input: Union[str, io.BytesIO],
                          strengths: List[str],
@@ -20,32 +21,55 @@ def highlight_resume_pdf(pdf_input: Union[str, io.BytesIO],
     if isinstance(pdf_input, str):
         doc = fitz.open(pdf_input)
     elif isinstance(pdf_input, io.BytesIO):
-        doc = fitz.open(stream=pdf_input, filetype="pdf")
+        doc = fitz.open(stream=pdf_input.getvalue(), filetype="pdf")
     else:
         raise ValueError("pdf_input must be a file path or BytesIO object.")
 
-    # Helper function to highlight a list of keywords with a given color
-    def highlight_words(page, keywords: List[str], color: tuple):
-        page_text = page.get_text("text").lower()  # normalize for case-insensitive
-        for word in keywords:
-            word_lower = word.lower()
-            quads = page.search_for(word_lower, quads=True)  # precise coordinates
-            for quad in quads:
-                h = page.add_highlight_annot(quad)
-                h.set_colors(stroke=color)
-                h.update()
+    # Clean and prepare keywords
+    def prepare_keywords(keywords):
+        prepared = []
+        for keyword in keywords:
+            if not keyword.strip():
+                continue
+            # Remove special characters and split into words
+            clean_keyword = re.sub(r'[^\w\s]', '', keyword.lower())
+            words = clean_keyword.split()
+            # Add both individual words and phrases
+            for word in words:
+                if len(word) > 3:  # Only words longer than 3 characters
+                    prepared.append(word)
+            if len(words) > 1:  # Also add the full phrase
+                prepared.append(clean_keyword)
+        return list(set(prepared))  # Remove duplicates
 
-    # Highlight strengths (green)
-    for page in doc:
-        highlight_words(page, strengths, color=(0, 1, 0))
+    clean_strengths = prepare_keywords(strengths)
+    clean_gaps = prepare_keywords(gaps)
 
-    # Highlight gaps/weaknesses (red)
+    # Helper function to highlight keywords
+    def highlight_keywords(page, keywords, color):
+        if not keywords:
+            return
+            
+        text_instances = []
+        for keyword in keywords:
+            # Search for the keyword (case insensitive)
+            areas = page.search_for(keyword)
+            text_instances.extend(areas)
+        
+        # Highlight all found instances
+        for area in text_instances:
+            highlight = page.add_highlight_annot(area)
+            highlight.set_colors(stroke=color)
+            highlight.update()
+
+    # Highlight strengths (green) and gaps (red)
     for page in doc:
-        highlight_words(page, gaps, color=(1, 0, 0))
+        highlight_keywords(page, clean_strengths, color=(0, 1, 0))  # Green
+        highlight_keywords(page, clean_gaps, color=(1, 0, 0))      # Red
 
     # Save to in-memory bytes
     output_stream = io.BytesIO()
-    doc.save(output_stream)
+    doc.save(output_stream, deflate=True, garbage=3)
     doc.close()
     output_stream.seek(0)
 

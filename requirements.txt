@@ -1,6 +1,9 @@
 streamlit==1.49.1
-pdfplumber==0.11.7
-openai==1.106.1
-pytest==8.4.2
+pandas==2.2.2
+plotly==5.24.1
+pdfplumber==0.11.4
+PyMuPDF==1.24.9
+pydantic==2.9.2
+langchain==0.3.0
+langchain-ollama==0.3.7
 ollama==0.5.3
-langchain==0.3.27
