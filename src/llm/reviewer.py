@@ -3,6 +3,7 @@ import re
 from langchain.llms import Ollama
 from src.helpers.feedback import ResumeFeedback
 from pydantic import ValidationError
+from src.helpers.lang import get_resume_language
 
 llm = Ollama(model="mistral")
 
@@ -70,10 +71,31 @@ def build_prompt(resume_text: str, job_role: str, job_description: str | None = 
       "weaknesses": ["specific weakness for {job_role}", "area needing improvement"],
       "strengths": ["specific strength relevant to {job_role}", "strong point"],
       "improvements": ["actionable suggestion for {job_role}", "specific improvement"],
-      "score": 75
+      "highlighted_strengths": ["exact phrase copied word-for-word from the resume that represents a strength"],
+      "highlighted_weaknesses": ["exact phrase copied word-for-word from the resume that represents a weakness"],
+      "score": integer between 0 and 100
     }}
 
+    Scoring rules:
+    - Start at 50 points baseline.
+    - Add +10 points for each clear, relevant strength (up to +30).
+    - Subtract -10 points for each weakness (up to -30).
+    - Subtract -5 points for each missing skill (up to -20).
+    - Ensure the final score stays between 0 and 100.
+
+    IMPORTANT for "highlighted_strengths" and "highlighted_weaknesses":
+    - Copy exact word-for-word phrases directly from the resume text.
+    - Prefer full clauses/bullets when possible (not single words).
+    - Do NOT include links, emails, headings, contact info, or CV metadata.
+    - If you cannot find an exact phrase, return [] (empty list) — do NOT paraphrase.
+    - Provide atleast 3 strengths that are exact word-for-word phrases from the resume text.
+    - Provide weaknesses without fail
+
+
     IMPORTANT: Your entire response must be valid JSON only. Do not add any explanatory text.
+
+    **IMPORTANT:** Respond back in {get_resume_language(resume_text)} language for ALL json fields.
+    **IMPORTANT:** Check if {get_resume_language(resume_text)} language is used for ALL json fields.
     """
     return prompt
 

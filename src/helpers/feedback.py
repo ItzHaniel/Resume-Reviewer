@@ -7,4 +7,6 @@ class ResumeFeedback(BaseModel):
     weaknesses: List[str]
     strengths: List[str]
     improvements: List[str]
+    highlighted_strengths: List[str] 
+    highlighted_weaknesses: List[str] 
     score: int
